@@ -21,11 +21,13 @@ async function run() {
         await client.connect();
         const database = client.db('sunglassDb');
         const productsCollection = database.collection('products');
+        const customerCollection = database.collection('customer');
+        const customerReview = database.collection('reviews');
         const usersCollection = database.collection('users');
 
 
         // Get API
-        app.get('/products', async (req, res) => {
+        app.get('/products', verifyToken, async (req, res) => {
             const cursor = productsCollection.find({});
             const products = await cursor.toArray();
             res.send(products);
@@ -62,10 +64,13 @@ async function run() {
             res.json(result);
         })
 
-        app.get('/users/:email', async (req, res) => {
+
+        // customer data save in server
+
+        app.get('/customer/:email', async (req, res) => {
             const email = req.params.email;
             const query = { email: email };
-            const user = await usersCollection.findOne(query);
+            const user = await customerCollection.findOne(query);
             let isAdmin = false;
             if (user?.role === 'admin') {
                 isAdmin = true;
@@ -73,30 +78,44 @@ async function run() {
             res.json({ admin: isAdmin });
         })
 
-        app.post('/users', async (req, res) => {
-            const user = req.body;
-            const result = await usersCollection.insertOne(user);
+        app.post('/customer', async (req, res) => {
+            const customer = req.body;
+            const result = await customerCollection.insertOne(customer);
             console.log(result);
             res.json(result);
         });
 
-        // app.put('/users/admin', verifyToken, async (req, res) => {
-        //     const user = req.body;
-        //     const requester = req.decodedEmail;
-        //     if (requester) {
-        //         const requesterAccount = await usersCollection.findOne({ email: requester });
-        //         if (requesterAccount.role === 'admin') {
-        //             const filter = { email: user.email };
-        //             const updateDoc = { $set: { role: 'admin' } };
-        //             const result = await usersCollection.updateOne(filter, updateDoc);
-        //             res.json(result);
-        //         }
-        //     }
-        //     else {
-        //         res.status(403).json({ message: 'Sorry not have access to make admin' })
-        //     }
+        app.post('/reviews', async (req, res) => {
+            const userReview = req.body;
+            const result = await customerReview.insertOne(userReview);
+            console.log(result);
+            res.json(result);
+        });
+        app.post('/users', async (req, res) => {
+            const user = req.body;
+            const result = await customerReview.insertOne(user);
+            console.log(result);
+            res.json(result);
+        });
 
-        // })
+        app.put('/users/admin', verifyToken, async (req, res) => {
+            const user = req.body;
+            const requester = req.decodedEmail;
+            if (requester) {
+                const requesterAccount = await usersCollection.findOne({ email: requester });
+                if (requesterAccount.role === 'admin') {
+                    const filter = { email: user.email };
+                    const updateDoc = { $set: { role: 'admin' } };
+                    const result = await usersCollection.updateOne(filter, updateDoc);
+                    res.json(result);
+                }
+            }
+            else {
+                res.status(403).json({ message: 'you do not have access to make admin' })
+            }
+
+        })
+
 
 
     } finally {
